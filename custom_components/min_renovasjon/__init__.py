@@ -70,13 +70,21 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     min_renovasjon = MinRenovasjon(hass, street_name, street_code, house_no, county_id, date_format)
 
     hass.data[DOMAIN]["data"] = min_renovasjon
-    await hass.config_entries.async_forward_entry_setups(config_entry, ["sensor"])
+    await hass.config_entries.async_forward_entry_setups(config_entry, ["sensor", "calendar"])
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    return True
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        config_entry, ["sensor", "calendar"]
+    )
+    
+    if unload_ok:
+        hass.data[DOMAIN].pop(config_entry.entry_id, None)
+    
+    return unload_ok
 
 
 class MinRenovasjon:
