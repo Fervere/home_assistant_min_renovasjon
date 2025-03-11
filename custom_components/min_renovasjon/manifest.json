@@ -1,6 +1,6 @@
 {
-  "domain": "min_renovasjon",
-  "name": "Min renovasjon",
+  "domain": "min_renovasjon_test",
+  "name": "Min renovasjon test",
   "config_flow": true,
   "documentation": "https://github.com/Fervere/home_assistant_min_renovasjon",
   "issue_tracker": "https://github.com/Fervere/home_assistant_min_renovasjon/issues",
