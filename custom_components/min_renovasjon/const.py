@@ -1,4 +1,4 @@
-DOMAIN = "min_renovasjon"
+DOMAIN = "min_renovasjon_test"
 CONF_STREET_NAME = "street_name"
 CONF_STREET_CODE = "street_code"
 CONF_HOUSE_NO = "house_no"
