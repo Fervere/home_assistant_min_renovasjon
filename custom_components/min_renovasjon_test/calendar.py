@@ -1,11 +1,13 @@
 """Calendar platform for min_renovasjon."""
+import logging
 from datetime import datetime, timedelta
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import callback
-from homeassistant.util.dt import as_utc
+from homeassistant.util.dt import as_utc, start_of_local_day  # Import start_of_local_day
 
 from .const import DOMAIN, CALENDAR_NAME
 
+_LOGGER = logging.getLogger(__name__)
 
 class MinRenovasjonCalendarEntity(CalendarEntity):
     """Representation of a Min Renovasjon Calendar Entity."""
@@ -40,82 +42,107 @@ class MinRenovasjonCalendarEntity(CalendarEntity):
         end_date: datetime,
     ) -> list[CalendarEvent]:
         """Return calendar events within a datetime range."""
-        start_date = as_utc(start_date)
-        end_date = as_utc(end_date)
-        
-        # Fetch updated calendar data
-        self._events = await self._fetch_events()
-        
-        # Filter events to include only those within the requested date range
-        return [
-            event for event in self._events
-            if start_date <= as_utc(event.start) <= end_date or
-            start_date <= as_utc(event.end) <= end_date or
-            (as_utc(event.start) <= start_date and end_date <= as_utc(event.end))
-        ]
+        try:
+            # Ensure start_date and end_date are UTC
+            start_date = as_utc(start_date)
+            end_date = as_utc(end_date)
+            
+            # Fetch updated calendar data
+            self._events = await self._fetch_events()
+            
+            # Filter events to include only those within the requested date range
+            return [
+                event for event in self._events
+                if (start_date <= as_utc(event.start) <= end_date or
+                    start_date <= as_utc(event.end) <= end_date or
+                    (as_utc(event.start) <= start_date and end_date <= as_utc(event.end)))
+            ]
+        except Exception as e:
+            _LOGGER.error(f"Error getting events: {e}")
+            return []
     
     async def async_update(self):
         """Update the calendar with new events from the API."""
-        self._events = await self._fetch_events()
+        try:
+            self._events = await self._fetch_events()
+        except Exception as e:
+            _LOGGER.error(f"Error updating calendar: {e}")
+            self._events = []
 
     async def _fetch_events(self):
         """Fetch calendar events from Min Renovasjon data."""
         events = []
         
-        # Get the calendar list from min_renovasjon
-        calendar_list = await self._min_renovasjon.get_calendar_list()
-        
-        if calendar_list:
-            for entry in calendar_list:
-                if entry is None:
-                    continue
+        try:
+            # Get the calendar list from min_renovasjon
+            calendar_list = await self._min_renovasjon.get_calendar_list()
+            
+            if calendar_list:
+                for entry in calendar_list:
+                    if entry is None:
+                        continue
                     
-                fraction_id, fraction_name, _, pickup_date, next_pickup_date = entry
-                
-                # Create an event for the upcoming pickup
-                if pickup_date and pickup_date.date() >= datetime.now().date():
-                    event_start = pickup_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                    event_end = event_start + timedelta(days=1)
-                    
-                    events.append(
-                        CalendarEvent(
-                            summary=f"{fraction_name} tømming",
-                            start=event_start,
-                            end=event_end,
-                            description=f"Tømming av {fraction_name}",
-                        )
-                    )
-                
-                # Create an event for the next pickup after that
-                if next_pickup_date and next_pickup_date.date() >= datetime.now().date():
-                    event_start = next_pickup_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                    event_end = event_start + timedelta(days=1)
-                    
-                    events.append(
-                        CalendarEvent(
-                            summary=f"{fraction_name} tømming",
-                            start=event_start,
-                            end=event_end,
-                            description=f"Tømming av {fraction_name}",
-                        )
-                    )
-        
-        # Sort events by start date
-        events.sort(key=lambda x: x.start)
-        return events
+                    try:
+                        fraction_id, fraction_name, _, pickup_date, next_pickup_date = entry
+                        
+                        # Create an event for the upcoming pickup
+                        if pickup_date and pickup_date.date() >= datetime.now().date():
+                            # Convert to timezone-aware datetime using Home Assistant's helper
+                            event_start = as_utc(start_of_local_day(pickup_date))
+                            event_end = as_utc(start_of_local_day(pickup_date + timedelta(days=1)))
+                            
+                            events.append(
+                                CalendarEvent(
+                                    summary=f"{fraction_name} tømming",
+                                    start=event_start,
+                                    end=event_end,
+                                    description=f"Tømming av {fraction_name}",
+                                )
+                            )
+                        
+                        # Create an event for the next pickup after that
+                        if next_pickup_date and next_pickup_date.date() >= datetime.now().date():
+                            # Convert to timezone-aware datetime
+                            event_start = as_utc(start_of_local_day(next_pickup_date))
+                            event_end = as_utc(start_of_local_day(next_pickup_date + timedelta(days=1)))
+                            
+                            events.append(
+                                CalendarEvent(
+                                    summary=f"{fraction_name} tømming",
+                                    start=event_start,
+                                    end=event_end,
+                                    description=f"Tømming av {fraction_name}",
+                                )
+                            )
+                    except (ValueError, TypeError, IndexError) as e:
+                        _LOGGER.error(f"Error processing calendar entry {entry}: {e}")
+                        continue
+            
+            # Sort events by start date
+            events.sort(key=lambda x: x.start)
+            _LOGGER.debug(f"Generated {len(events)} calendar events")
+            return events
+            
+        except Exception as e:
+            _LOGGER.error(f"Error fetching events: {e}")
+            return []
 
     def _get_next_event(self):
         """Return the next upcoming event."""
-        now = datetime.now()
-        future_events = [
-            event for event in self._events
-            if event.start >= now
-        ]
-        
-        if not future_events:
-            return None
+        now = as_utc(datetime.now())  # Make sure we're comparing with timezone-aware datetimes
+        try:
+            future_events = [
+                event for event in self._events
+                if event.start >= now
+            ]
             
-        return min(future_events, key=lambda x: x.start)
+            if not future_events:
+                return None
+                
+            return min(future_events, key=lambda x: x.start)
+        except Exception as e:
+            _LOGGER.error(f"Error getting next event: {e}")
+            return None
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
