@@ -17,4 +17,4 @@ CONST_URL_FRAKSJONER = KOMTEK_API_BASE_URL + "?server=https://komteksky.norkart.
 CONST_URL_TOMMEKALENDER = KOMTEK_API_BASE_URL + "?server=https://komteksky.norkart.no/MinRenovasjon.Api/api/tommekalender/?gatenavn=[gatenavn]&gatekode=[gatekode]&husnr=[husnr]"
 
 # Calendar related constants
-CALENDAR_NAME = "Min Renovasjon"
+CALENDAR_NAME = "Min Renovasjon test"
