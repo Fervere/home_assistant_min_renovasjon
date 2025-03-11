@@ -2,8 +2,8 @@
   "domain": "min_renovasjon",
   "name": "Min renovasjon",
   "config_flow": true,
-  "documentation": "https://github.com/eyesoft/home_assistant_min_renovasjon",
-  "issue_tracker": "https://github.com/eyesoft/home_assistant_min_renovasjon/issues",
+  "documentation": "https://github.com/Fervere/home_assistant_min_renovasjon",
+  "issue_tracker": "https://github.com/Fervere/home_assistant_min_renovasjon/issues",
   "codeowners": ["@eyesoft"],
   "dependencies": [],
   "requirements": [],
@@ -11,5 +11,6 @@
   "zeroconf": [],
   "homekit": {},
   "version": "2.1.0",
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "supported_platforms": ["sensor", "calendar"]
 }
